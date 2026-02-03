@@ -28,12 +28,11 @@ const schema = new mongoose.Schema(
   }
 );
 
-// 🔒 HASH DA SENHA
-schema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+// 🔒 HASH DA SENHA (SEM next)
+schema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
 // 🔑 COMPARAR SENHA (LOGIN)
