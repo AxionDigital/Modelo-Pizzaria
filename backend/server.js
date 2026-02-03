@@ -6,9 +6,9 @@ const cookieParser = require("cookie-parser");
 const connectDB = require("./src/config/db");
 
 const authRoutes = require("./src/routes/authRoutes");
-const menuRoutes = require("./src/routes/menu");
-const categoriasRoutes = require("./src/routes/categorias");
-const pedidoRoutes = require("./src/routes/pedidoRoutes");
+const menuRoutes = require("./src/routes/menuRoutes");
+const categoriasRoutes = require("./src/routes/categoriasRoutes");
+const pedidoRoutes = require("./src/routes/pedidosRoutes");
 const statsRoutes = require("./src/routes/statsRoutes");
 
 connectDB();
