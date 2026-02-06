@@ -19,6 +19,9 @@ exports.listar = async (req, res) => {
 exports.criar = async (req, res) => {
   const { nome, preco, categoria, descricao, tipo } = req.body;
 
+  console.log("BODY:", req.body);
+  console.log("FILE:", req.file);
+
   if (!nome || !preco || !categoria || !tipo) {
     return res.status(400).json({ message: "Campos obrigatórios faltando" });
   }

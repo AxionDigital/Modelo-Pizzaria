@@ -31,35 +31,33 @@ interface IProduto {
 }
 
 interface PedidoItem {
-  id?: string;
+  quantidade: number;
 
-  qtd: number;
-
-  produto?: {
-    id: string;
+  produtoId?: {
+    _id: string;
     nome: string;
     preco: number;
   };
 
+  sabor1Id?: {
+    _id: string;
+    nome: string;
+  };
+
+  sabor2Id?: {
+    _id: string;
+    nome: string;
+  };
+
   isMeioAMeio?: boolean;
 
-  sabor1?: {
-    id: string;
-    nome: string;
-  };
-
-  sabor2?: {
-    id: string;
-    nome: string;
-  };
-
   borda?: {
-    id: string;
     nome: string;
     preco?: number;
   };
 
   observacao?: string;
+  precoUnitario?: number;
 }
 
 interface Pedido {
@@ -187,9 +185,6 @@ export default function AdminPanel() {
     await fetch(`${API}/api/logout`, {
       method: "POST",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
     });
 
     router.push("/admin/login");
@@ -224,7 +219,9 @@ export default function AdminPanel() {
       method: isEdit ? "PUT" : "POST",
       credentials: "include",
       body: formData,
-    });
+    }).catch(err => {
+      console.log(err);
+    })
 
     setIsModalOpen(false);
     setEditingItem(null);
@@ -456,7 +453,16 @@ export default function AdminPanel() {
           )}
 
 
-          {activeTab === "cardapio" && <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-orange-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-200"><Plus size={20} /> Novo Item</button>}
+          {activeTab === "cardapio" && <button onClick={() => {
+            setEditingItem({
+              nome: "",
+              preco: 0,
+              descricao: "",
+              tipo: "pizza",
+              categoria: categorias[0]?.nome || "",
+            });
+            setIsModalOpen(true);
+          }} className="bg-orange-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-200"><Plus size={20} /> Novo Item</button>}
         </header>
 
         {error && (
@@ -517,13 +523,14 @@ export default function AdminPanel() {
                         {pedido.itens.map((item, idx) => (
                           <div key={idx} className={`bg-slate-50 p-5 ${pedido.cliente.nome ? "rounded-x-2xl rounded-b-2xl" : "rounded-2xl"} border border-slate-100`}>
                             <p className="text-slate-900 font-black text-lg">
-                              {item.qtd}x{" "}
+                              {item.quantidade}x{" "}
                               {item.isMeioAMeio
-                                ? `Meio ${item.sabor1?.nome || 'Sabor 1'} / Meio ${item.sabor2?.nome || 'Sabor 2'}`
-                                : item.produto?.nome || "Item"}
+                                ? `Meio ${item.sabor1Id?.nome || 'Sabor 1'} / Meio ${item.sabor2Id?.nome || 'Sabor 2'}`
+                                : item.produtoId?.nome || "Item"}
                             </p>
+
                             <div className="text-sm text-slate-500 mt-2 space-y-1 font-medium">
-                              {item.borda?.id !== 'nenhuma' && <p className="flex items-center gap-1.5"><ChevronRight size={12} className="text-orange-600" /> {item.borda?.nome}</p>}
+                              {item.borda?.nome !== 'nenhuma' && <p className="flex items-center gap-1.5"><ChevronRight size={12} className="text-orange-600" /> {item.borda?.nome}</p>}
                               {item.observacao && <p className="italic text-orange-600 bg-orange-50 p-2 rounded-lg mt-2">Obs: {item.observacao}</p>}
                             </div>
                           </div>
@@ -634,7 +641,10 @@ export default function AdminPanel() {
                       <span className="text-xl font-black text-slate-900 tracking-tighter">R$ {item.preco.toFixed(2)}</span>
                       <div className="flex gap-1">
                         <button
-                          onClick={() => { setEditingItem(item); setIsModalOpen(true); }}
+                          onClick={() => {
+                            setEditingItem(item);
+                            setIsModalOpen(true);
+                          }}
                           className="p-2 text-slate-300 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"
                         >
                           <Edit size={18} />
@@ -864,10 +874,13 @@ export default function AdminPanel() {
                   <div>
                     <label className="block mb-2 font-black text-slate-400 text-xs uppercase tracking-widest">Categoria</label>
                     <select
-                      value={editingItem?.categoria || (categorias[0]?.nome || "")}
+                      value={editingItem?.categoria || categorias[0]?.nome || ""}
                       onChange={e => setEditingItem(prev => ({ ...prev, categoria: e.target.value }))}
                       className="w-full p-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition"
                     >
+                      <option value="" disabled>
+                        Selecione uma categoria
+                      </option>
                       {categorias.map(cat => (
                         <option key={cat.id} value={cat.nome}>{cat.nome}</option>
                       ))}

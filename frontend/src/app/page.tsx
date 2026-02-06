@@ -172,9 +172,25 @@ export default function Home() {
       },
       observacao: item.observacao,
       quantidade: item.qtd,
-      precoUnitario: item.precoUnitario,
+      precoUnitario: item.precoUnitario.toFixed(2),
     }));
   }
+
+  const adicionarBebidaAoCarrinho = (produto: IProduto) => {
+    const novoItem: IItemCarrinho = {
+      id_temp: Math.random().toString(36).substr(2, 9),
+      produto,
+      isMeioAMeio: false,
+      borda: BORDAS[0],
+      observacao: "",
+      qtd: 1,
+      precoUnitario: produto.preco
+    };
+
+    setCarrinho(prev => [...prev, novoItem]);
+    setIsCartOpen(true);
+  };
+
 
   useEffect(() => {
     const savedInfo = localStorage.getItem("cliente-info");
@@ -197,9 +213,9 @@ export default function Home() {
         endereco: tipoEntrega === "entrega" ? `${endereco.rua}, ${endereco.numero} - ${endereco.bairro}` : "Retirada"
       },
       endereco: tipoEntrega === "entrega" ? endereco : null,
-      subtotal: totalPreco,
+      subtotal: totalPreco.toFixed(2),
       taxaEntrega: tipoEntrega === "entrega" ? taxaEntrega : 0,
-      total: totalPreco + (tipoEntrega === "entrega" ? taxaEntrega : 0),
+      total: (totalPreco + (tipoEntrega === "entrega" ? taxaEntrega : 0)).toFixed(2),
       itens: montarItensPedido(carrinho),
     };
   }
@@ -212,6 +228,8 @@ export default function Home() {
 
     try {
       const pedido = montarPedido();
+
+      console.log(pedido);
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005'}/api/pedidos`,
@@ -381,10 +399,11 @@ export default function Home() {
                   <p className="text-gray-500 text-sm leading-relaxed mb-8 line-clamp-2">{produto.descricao}</p>
                   <button onClick={() => {
                     if (produto.categoria === 'Bebidas') {
-                      setProdutoSelecionado(produto);
-                      adicionarAoCarrinho();
-                    };
-                    if (produto.categoria !== 'Bebidas') abrirPersonalizacao(produto);
+                      adicionarBebidaAoCarrinho(produto);
+                    } else {
+                      abrirPersonalizacao(produto);
+                    }
+
                   }} disabled={!isAberto} className={`mt-auto w-full ${isAberto ? 'bg-slate-900 hover:bg-orange-600' : 'bg-gray-300'} text-white py-4 cursor-pointer rounded-2xl font-bold transition-all flex items-center justify-center gap-2`}><Plus className="w-5 h-5" /> {produto.categoria === 'Bebidas' ? 'Adicionar ao Pedido' : 'Personalizar'}</button>
                 </div>
               </motion.div>
@@ -437,13 +456,32 @@ export default function Home() {
                           <p className="font-bold mb-3 text-gray-600 text-sm uppercase tracking-wider">Escolha o segundo sabor:</p>
                           <select className="w-full p-4 rounded-xl border border-gray-200 font-bold text-gray-700 outline-none focus:border-orange-600 transition-all" onChange={(e) => {
                             const val = e.target.value;
-                            const selecionado = menu.find(p => String(p._id || p.id) === String(val));
+                            const selecionado = menu.find(
+                              p =>
+                                p.tipo === 'pizza' &&
+                                String(p._id || p.id) === String(val)
+                            );
+
                             setSabor2(selecionado || null);
+
                           }}>
                             <option value="">Selecione um sabor...</option>
-                            {menu.filter(p => p.tipo === 'pizza' && String(p._id || p.id) !== String(produtoSelecionado._id || produtoSelecionado.id)).map(p => (
-                              <option key={String(p._id || p.id)} value={String(p._id || p.id)}>{p.nome} (+R${p.preco})</option>
-                            ))}
+                            {menu
+                              .filter(
+                                p =>
+                                  p.tipo === 'pizza' &&
+                                  String(p._id || p.id) !==
+                                  String(produtoSelecionado._id || produtoSelecionado.id)
+                              )
+                              .map(p => (
+                                <option
+                                  key={String(p._id || p.id)}
+                                  value={String(p._id || p.id)}
+                                >
+                                  {p.nome} (+R${p.preco})
+                                </option>
+                              ))}
+
                           </select>
                         </div>
                       )}
@@ -476,7 +514,7 @@ export default function Home() {
         {totalItens > 0 && (
           <motion.button initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} disabled={!isAberto} onClick={() => { setIsCartOpen(true); document.body.style.overflow = "hidden"; }} className="fixed bottom-8 right-8 z-40 bg-orange-600 text-white px-8 py-4 rounded-full shadow-2xl shadow-orange-300 flex items-center gap-4 hover:scale-105 transition-transform">
             <div className="relative"><ShoppingCart className="w-6 h-6" /><span className="absolute -top-2 -right-2 bg-white text-orange-600 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full">{totalItens}</span></div>
-            <span className="font-bold text-lg">Ver Pedido • R$ {totalPreco}</span>
+            <span className="font-bold text-lg">Ver Pedido • R$ {totalPreco.toFixed(2)}</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -503,7 +541,7 @@ export default function Home() {
                         <div className="flex-1">
                           <div className="flex justify-between mb-1">
                             <h4 className="font-bold">{item.isMeioAMeio ? `Meio ${item.sabor1?.nome || 'Sabor 1'} / Meio ${item.sabor2?.nome || 'Sabor 2'}` : item.produto?.nome}</h4>
-                            <span className="font-bold text-orange-600">R$ {item.precoUnitario}</span>
+                            <span className="font-bold text-orange-600">R$ {item.precoUnitario.toFixed(2)}</span>
                           </div>
                           <div className="text-xs text-gray-400 space-y-1">
                             {item.borda.id !== 'nenhuma' && <p>• {item.borda.nome}</p>}
@@ -616,9 +654,9 @@ export default function Home() {
                           ))}
                         </div>
                       </div>
-                      <div className="flex justify-between mb-2"><span className="text-gray-500">Subtotal</span><span className="font-bold">R$ {totalPreco}</span></div>
+                      <div className="flex justify-between mb-2"><span className="text-gray-500">Subtotal</span><span className="font-bold">R$ {totalPreco.toFixed(2)}</span></div>
                       <div className="flex justify-between text-sm"><span className="text-gray-500">Taxa de entrega</span><span className={`font-semibold ${tipoEntrega === 'retirada' ? "text-green-600" : ""}`}>{tipoEntrega === 'retirada' ? "Grátis" : `R$ ${taxaEntrega}`}</span></div>
-                      <div className="flex justify-between text-2xl font-black mb-6"><span>Total</span><span>R$ {tipoEntrega === 'retirada' ? totalPreco : totalPreco + taxaEntrega}</span></div>
+                      <div className="flex justify-between text-2xl font-black mb-6"><span>Total</span><span>R$ {(tipoEntrega === 'retirada' ? totalPreco : totalPreco + taxaEntrega).toFixed(2)}</span></div>
                       <button onClick={finalizarPedido} disabled={
                         carrinho.length === 0 ||
                         (tipoEntrega === "entrega" && (!endereco.rua || !endereco.numero)) ||

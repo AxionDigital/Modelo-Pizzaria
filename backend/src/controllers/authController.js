@@ -40,3 +40,17 @@ exports.login = async (req, res) => {
     },
   });
 };
+
+exports.logout = (req, res) => {
+
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
+
+  return res.json({ success: true });
+};
+
+

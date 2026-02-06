@@ -50,8 +50,7 @@ function enviarMensagemTelegram(pedido) {
 
   texto += `📝 *Itens do pedido:*\n`;
   itens.forEach((item, idx) => {
-    const nomeItem = item.produtoId?.nome || item.sabor1Id?.nome || "Produto";
-    texto += `${idx + 1}. ${nomeItem} x${item.quantidade || 1}\n`;
+    texto += `${idx + 1}. ${item.sabor1Id?.nome || "-"} / ${item.sabor2Id?.nome || "-"}\n`;
 
     if (item.isMeioAMeio) {
       texto += `   🍕 Sabores: ${item.sabor1Id?.nome || "-"} / ${item.sabor2Id?.nome || "-"}\n`;
@@ -68,7 +67,7 @@ function enviarMensagemTelegram(pedido) {
     texto += "\n";
   });
 
-  texto += `🙏 Obrigado por escolher a *Baianinha Pizzaria*! Esperamos que você adore sua refeição! 🍕\n`;
+  texto += `🙏 Obrigado por escolher a *Pizzaria*! Esperamos que você adore sua refeição! 🍕\n`;
   texto += `📢 Fique de olho: atualizações do seu pedido chegarão aqui automaticamente.`;
 
   // Envia a mensagem para o chat do Telegram
