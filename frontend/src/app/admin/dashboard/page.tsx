@@ -134,16 +134,16 @@ export default function AdminPanel() {
 
   const router = useRouter();
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005";
-
+  
   const fetchData = async (isSilent = false) => {
     try {
       if (!isSilent) setLoading(true);
       const [menuRes, pedidosRes, statsRes, categoriasRes] =
         await Promise.all([
-          fetch(`${API}/api/menu`, { credentials: "include" }),
-          fetch(`${API}/api/pedidos`, { credentials: "include" }),
-          fetch(`${API}/api/stats`, { credentials: "include" }),
-          fetch(`${API}/api/categorias`, { credentials: "include" }),
+          fetch(`/api/menu`, { credentials: "include" }),
+          fetch(`/api/pedidos`, { credentials: "include" }),
+          fetch(`/api/stats`, { credentials: "include" }),
+          fetch(`/api/categorias`, { credentials: "include" }),
         ]);
 
       if (
