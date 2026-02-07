@@ -4,11 +4,16 @@ export async function POST(req: Request) {
   const body = await req.json();
 
   // chama o backend
-  const r = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005"}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const r = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+
+  console.log(r);
 
   if (!r.ok) {
     return NextResponse.json(
@@ -24,8 +29,8 @@ export async function POST(req: Request) {
 
   res.cookies.set("token", token, {
     httpOnly: true,
-    secure: true,      // produção
-    sameSite: "lax",   // admin
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
