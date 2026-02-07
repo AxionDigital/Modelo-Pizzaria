@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const body = await req.json();
-
-  console.log("segundo");
-
-  // chama o backend
+  const API = process.env.NEXT_PUBLIC_API_URL
+  
   const r = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}api/login`,
+    `${API}/api/login`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
