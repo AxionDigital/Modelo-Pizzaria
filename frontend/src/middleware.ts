@@ -3,16 +3,17 @@ import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
+  const { pathname } = req.nextUrl;
 
-  const isAdminRoute = req.nextUrl.pathname.startsWith("/admin/dashboard");
-  const isLoginPage = req.nextUrl.pathname === "/admin/login";
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isLoginPage = pathname === "/admin/login";
 
-  // ❌ Não logado tentando acessar /admin
+  // ❌ Não logado tentando acessar área admin
   if (isAdminRoute && !token && !isLoginPage) {
     return NextResponse.redirect(new URL("/admin/login", req.url));
   }
 
-  // ✅ Logado tentando acessar /admin/login
+  // ✅ Logado tentando acessar login
   if (isLoginPage && token) {
     return NextResponse.redirect(new URL("/admin/dashboard", req.url));
   }
