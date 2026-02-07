@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   const body = await req.json();
 
+  console.log("segundo");
+
   // chama o backend
   const r = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
@@ -12,8 +14,6 @@ export async function POST(req: Request) {
       body: JSON.stringify(body),
     }
   );
-
-  console.log(r);
 
   if (!r.ok) {
     return NextResponse.json(
