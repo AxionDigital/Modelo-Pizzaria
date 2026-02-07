@@ -38,7 +38,7 @@ export default function AdminLogin() {
 
       // ✅ backend já setou o cookie httpOnly
       // ✅ não precisa ler token
-      router.push("/admin");
+      router.push("/admin/dashboard");
 
     } catch {
       setError("Erro ao conectar com o servidor.");
