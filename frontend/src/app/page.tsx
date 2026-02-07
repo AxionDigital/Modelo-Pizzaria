@@ -693,7 +693,7 @@ export default function Home() {
         </div>
         <div className="max-w-7xl mx-auto border-t border-white/10 mt-24 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-500 text-sm">
           <p>© 2026 Pizzaria. Todos os direitos reservados.</p>
-          <a href="/admin" className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg transition-colors text-gray-400 hover:text-white"><Lock size={14} /> Acesso Administrativo</a>
+          <a href="/admin/login" className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg transition-colors text-gray-400 hover:text-white"><Lock size={14} /> Acesso Administrativo</a>
         </div>
       </footer>
     </div>
