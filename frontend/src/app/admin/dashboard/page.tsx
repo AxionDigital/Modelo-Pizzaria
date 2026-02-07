@@ -182,12 +182,11 @@ export default function AdminPanel() {
   }, [activeTab]);
 
   const handleLogout = async () => {
-    await fetch(`${API}/api/logout`, {
+    await fetch("/api/logout", {
       method: "POST",
-      credentials: "include",
     });
 
-    router.push("/admin/login");
+    router.replace("/admin/login");
   };
 
   const handleSaveItem = async (e: React.FormEvent) => {
