@@ -11,6 +11,8 @@ exports.listar = async (req, res) => {
 };
 
 exports.criar = async (req, res) => {
+  console.log(req.body);
+  
   const categoria = await Categoria.create(req.body);
   res.json({ data: format(categoria) });
 };
