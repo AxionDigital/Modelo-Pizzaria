@@ -1,17 +1,30 @@
 "use client";
 
+// HOOKS
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+
+// ICONES
 import { Lock, User, Pizza } from "lucide-react";
 
+// OUTROS
+import { motion } from "framer-motion";
+import LoadingOverlay from "@/components/Loading";
+
 export default function AdminLogin() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  // NAVEGAÇÃO
   const router = useRouter();
 
+  // FORMULÁRIO
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  // FEEDBACK
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // LOGIN
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -30,8 +43,6 @@ export default function AdminLogin() {
         return;
       }
 
-      // ✅ backend já setou o cookie httpOnly
-      // ✅ não precisa ler token
       router.push("/admin/dashboard");
 
     } catch {
@@ -42,6 +53,8 @@ export default function AdminLogin() {
   };
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 px-6">
+      {/* Loading */}
+      <LoadingOverlay show={loading} message="Autenticando..." />
 
       {/* Glow decorativo */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

@@ -1,19 +1,35 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-export async function GET() {
+function getIdFromRequest(req: NextRequest): string | null {
+  const url = new URL(req.url);
+  const pathSegments = url.pathname.split('/'); // Ex: ['', 'api', 'categoria', '12345']
+  const id = pathSegments[pathSegments.length - 1];
+  
+  // Retorna o ID se ele for válido, senão retorna null
+  return id && id !== "[id]" ? id : null;
+}
+
+export async function PUT(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = (await cookies()).get("token")?.value;
     const API = process.env.NEXT_PUBLIC_API_URL;
+    const id = getIdFromRequest(req);
+
+     if (!id) {
+      return NextResponse.json({ message: "ID da categoria não fornecido" }, { status: 400 });
+    }
 
     if (!token) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const r = await fetch(`${API}/api/categorias`, {
+    const formData = await req.formData();
+
+    const r = await fetch(`${API}/api/menu/${id}`, {
+      method: "PUT",
       headers: { Cookie: `token=${token}` },
-      credentials: "include",
+      body: formData,
     });
 
     const text = await r.text();
@@ -30,14 +46,14 @@ export async function GET() {
 
     if (!r.ok) {
       return NextResponse.json(
-        { message: data.message || "Erro ao buscar categorias" },
+        { message: data.message || "Erro ao atualizar item" },
         { status: r.status }
       );
     }
 
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error("Erro ao buscar categorias:", error);
+    console.error("Erro ao atualizar item do menu:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor" },
       { status: 500 }
@@ -45,25 +61,23 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = (await cookies()).get("token")?.value;
     const API = process.env.NEXT_PUBLIC_API_URL;
+    const id = getIdFromRequest(req);
+
+     if (!id) {
+      return NextResponse.json({ message: "ID da categoria não fornecido" }, { status: 400 });
+    }
 
     if (!token) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    const body = await req.json();
-
-    const r = await fetch(`${API}/api/categorias`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `token=${token}`,
-      },
-      body: JSON.stringify(body),
+    const r = await fetch(`${API}/api/menu/${id}`, {
+      method: "DELETE",
+      headers: { Cookie: `token=${token}` },
     });
 
     const text = await r.text();
@@ -80,14 +94,14 @@ export async function POST(req: Request) {
 
     if (!r.ok) {
       return NextResponse.json(
-        { message: data.message || "Erro ao criar categoria" },
+        { message: data.message || "Erro ao deletar item" },
         { status: r.status }
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error("Erro ao criar categoria:", error);
+    console.error("Erro ao deletar item do menu:", error);
     return NextResponse.json(
       { message: "Erro interno do servidor" },
       { status: 500 }

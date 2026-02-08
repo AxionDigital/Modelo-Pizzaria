@@ -1,22 +1,33 @@
 "use client";
 
+// HOOKS
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRef } from "react";
+import { useRouter } from "next/navigation";
+
+// ICONES
 import {
   LayoutDashboard, Utensils, ShoppingBag, Plus, Trash2, Edit, CheckCircle, Clock, XCircle, BarChart3, TrendingUp, DollarSign, Package, LogOut, Home, AlertCircle, ChevronRight, X, Tags,
   QrCode,
   ImageIcon,
   Upload
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
-import { useRef } from "react";
 
+// OUTROS
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import LoadingOverlay from "@/components/Loading";
+import ModalConfirm from "@/components/ModalConfirm";
+import Toast from "@/components/Toast";
+import ConfirmModal from "@/components/ModalConfirm";
+
+// TIPO CATEGORIA
 interface Categoria {
   id: string;
   nome: string;
 }
 
+// TIPO PRODUTO
 interface IProduto {
   id: string;
   nome: string;
@@ -30,6 +41,7 @@ interface IProduto {
   removeImagem?: boolean;
 }
 
+// TIPO ITEM_PEDIDO
 interface PedidoItem {
   quantidade: number;
 
@@ -60,6 +72,7 @@ interface PedidoItem {
   precoUnitario?: number;
 }
 
+// TIPO PEDIDO
 interface Pedido {
   id: string;
   itens: PedidoItem[];
@@ -87,7 +100,7 @@ interface Pedido {
   criadoEm: string;
 }
 
-
+// VARIANTES
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -99,6 +112,7 @@ const containerVariants = {
   },
 };
 
+// ITENS_VARIANTES 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -111,39 +125,58 @@ const itemVariants = {
   },
 } as const;
 
-
 export default function AdminPanel() {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // NAVEGAÇÃO
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"pedidos" | "cardapio" | "categorias" | "relatorios">("pedidos");
-  const [menu, setMenu] = useState<IProduto[]>([]);
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [novaCategoria, setNovaCategoria] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Partial<IProduto> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // FILTRO
   const [filtroStatus, setFiltroStatus] = useState<string>("Todos");
   const statusFiltros = ["Todos", "Pendente", "Preparando", "Saiu para entrega", "Entregue", "Cancelado"];
+
+  // FEEDBACK
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    idToDelete?: string;
+    type?: "menu" | "categoria" | "pedido";
+  }>({ isOpen: false });
+
+
+  // MODAL
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // CATEGORIA
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [novaCategoria, setNovaCategoria] = useState("");
   const [editingCategoria, setEditingCategoria] = useState<Categoria | null>(null); // Adicione esta linha
 
-  const pedidosFiltrados = filtroStatus === "Todos"
-    ? pedidos
-    : pedidos.filter(p => p.status === filtroStatus);
+  // MENU
+  const [menu, setMenu] = useState<IProduto[]>([]);
+  const [editingItem, setEditingItem] = useState<Partial<IProduto> | null>(null);
 
-  const router = useRouter();
-  const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005";
-  
+  // PEDIDO
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+
+  // STATUS
+  const [stats, setStats] = useState<any>(null);
+
+  // OUTROS
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // FETCH GERAL
   const fetchData = async (isSilent = false) => {
     try {
       if (!isSilent) setLoading(true);
       const [menuRes, pedidosRes, statsRes, categoriasRes] =
         await Promise.all([
-          fetch(`/api/menu`, { credentials: "include" }),
-          fetch(`/api/pedidos`, { credentials: "include" }),
-          fetch(`/api/stats`, { credentials: "include" }),
-          fetch(`/api/categorias`, { credentials: "include" }),
+          fetch(`/api/menu`,),
+          fetch(`/api/pedido`,),
+          fetch(`/api/stats`,),
+          fetch(`/api/categoria`,),
         ]);
 
       if (
@@ -155,10 +188,15 @@ export default function AdminPanel() {
       }
 
       setMenu((await menuRes.json()).data || []);
+
       setPedidos((await pedidosRes.json()).data || []);
+
       setStats((await statsRes.json()).data || null);
+
       setCategorias((await categoriasRes.json()).data || []);
+
       setError(null);
+
     } catch (err) {
       console.error(err);
       setError("Erro ao carregar dados.");
@@ -167,6 +205,7 @@ export default function AdminPanel() {
     }
   };
 
+  // FETCH
   useEffect(() => {
     fetchData();
 
@@ -177,155 +216,282 @@ export default function AdminPanel() {
     return () => clearInterval(interval);
   }, []);
 
+  // FECTH
   useEffect(() => {
     fetchData(true);
   }, [activeTab]);
 
+  // FILTRO
+  const pedidosFiltrados = filtroStatus === "Todos"
+    ? pedidos
+    : pedidos.filter(p => p.status === filtroStatus);
+
+  // FEEDBACK - TOAST
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+  };
+
+  // LOGOUT
   const handleLogout = async () => {
-    await fetch("/api/logout", {
-      method: "POST",
-    });
+    try {
+      setLoading(true);
 
-    router.replace("/admin/login");
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        showToast("Erro ao fazer logout.", "error");
+        throw new Error("Erro ao fazer logout.");
+      }
+
+      router.replace("/admin/login");
+    } catch (err: any) {
+      console.error(err);
+      showToast("Erro ao desconectar.", "error");
+      setError(err.message || "Erro ao desconectar.");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // CRIAR E EDITAR MENU
   const handleSaveItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingItem) return;
+    try {
+      e.preventDefault();
+      if (!editingItem) return;
 
-    const isEdit = Boolean(editingItem.id);
+      setLoading(true);
 
-    const formData = new FormData();
-    formData.append("nome", editingItem.nome || "");
-    formData.append("preco", String(editingItem.preco || 0));
-    formData.append("descricao", editingItem.descricao || "");
-    formData.append("categoria", editingItem.categoria || "");
-    formData.append("tipo", editingItem.tipo || "pizza");
+      const isEdit = Boolean(editingItem.id);
 
-    if (editingItem.removeImagem) {
-      formData.append("removeImagem", "true");
-    }
+      const formData = new FormData();
+      formData.append("nome", editingItem.nome || "");
+      formData.append("preco", String(editingItem.preco || 0));
+      formData.append("descricao", editingItem.descricao || "");
+      formData.append("categoria", editingItem.categoria || "");
+      formData.append("tipo", editingItem.tipo || "pizza");
 
-    if (editingItem.file) {
-      formData.append("imagem", editingItem.file);
-    }
+      if (editingItem.removeImagem) {
+        formData.append("removeImagem", "true");
+      }
 
-    const url = isEdit
-      ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005'}/api/menu/${editingItem.id}`
-      : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005'}/api/menu`;
+      if (editingItem.file) {
+        formData.append("imagem", editingItem.file);
+      }
 
-    await fetch(url, {
-      method: isEdit ? "PUT" : "POST",
-      credentials: "include",
-      body: formData,
-    }).catch(err => {
+      const url = isEdit
+        ? `/api/menu/${editingItem.id}`
+        : `/api/menu`;
+
+      const res = await fetch(url, {
+        method: isEdit ? "PUT" : "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "Erro ao salvar o item");
+      }
+
+      // ✅ Toast de sucesso
+      showToast(isEdit ? "Item atualizado com sucesso!" : "Item criado com sucesso!", "success");
+
+    } catch (err: any) {
       console.log(err);
-    })
-
-    setIsModalOpen(false);
-    setEditingItem(null);
-    fetchData();
+      showToast(err.message || "Erro ao salvar item.", "error");
+    } finally {
+      setIsModalOpen(false);
+      setEditingItem(null);
+      fetchData();
+    }
   };
 
-  const handleDeleteItem = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este item?")) return;
+  // ADICIONAR IMAGEM - MENU
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    await fetch(`${API}/api/menu/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+      setLoading(true);
 
-    fetchData();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditingItem(prev => ({
+          ...prev,
+          imagem: reader.result as string, // PREVIEW
+          file,                            // ARQUIVO REAL
+          removeImagem: false,             // CANCELA REMOÇÃO
+        }));
+        setLoading(false);
+      };
+
+      reader.onerror = (err) => {
+        console.error("Erro ao ler arquivo:", err);
+        setError("Erro ao carregar a imagem.");
+        setLoading(false);
+      };
+
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Erro ao processar a imagem.");
+      setLoading(false);
+    }
   };
 
+  // REMOVER IMAGEM - MENU
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      setLoading(true);
+
+      setEditingItem(prev => ({
+        ...prev,
+        imagem: "",
+        imagemId: "",
+        removeImagem: true,
+      }));
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Erro ao remover a imagem.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // CRIAR E EDITAR CATEGORIA
   const handleAddCategoria = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!novaCategoria.trim()) return;
 
-    if (editingCategoria) {
+    setLoading(true);
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005'}/api/categorias/${editingCategoria.id}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ nome: novaCategoria }),
-      });
-      setEditingCategoria(null);
-    } else {
+    try {
+      if (editingCategoria) {
 
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005'}/api/categorias`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ nome: novaCategoria }),
-      });
+        const res = await fetch(`/api/categoria/${editingCategoria.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ nome: novaCategoria }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          showToast("Erro ao atualizar a categoria.", "error");
+          throw new Error(data?.message || "Erro ao atualizar a categoria.");
+        }
+
+        showToast("Categoria atualizada com sucesso!", "success");
+        setEditingCategoria(null);
+      } else {
+        const res = await fetch(`/api/categoria`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ nome: novaCategoria }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data?.message || "Erro ao criar a categoria.");
+        }
+
+        showToast("Categoria criada com sucesso!", "success");
+      }
+
+      setNovaCategoria("");
+      await fetchData();
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || "Erro ao salvar a categoria.", "error");
+      setError(err.message || "Erro ao salvar a categoria.");
     }
-
-    setNovaCategoria("");
-    fetchData();
   };
 
+  // EDITAR CATEGORIA
   const handleEditCategoria = (cat: Categoria) => {
     setEditingCategoria(cat);
     setNovaCategoria(cat.nome);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteCategoria = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta categoria?")) return;
-
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005'}/api/categorias/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    fetchData();
-  };
-
+  // MUDAR STATUS DO PEDIDO
   const updatePedidoStatus = async (id: string, status: string) => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3005'}/api/pedidos/${id}/status`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ status }),
-    });
-
-    fetchData();
-  };
-
-  const handleDeletePedido = async (id: string) => {
-    const confirmacao = confirm(
-      "Tem certeza que deseja excluir este pedido? Essa ação não pode ser desfeita."
-    );
-
-    if (!confirmacao) return;
-
-    await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005"}/api/pedidos/${id}`,
-      {
-        method: "DELETE",
-        credentials: "include",
+    try {
+      const res = await fetch(`/api/pedido/${id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-      }
-    );
+        body: JSON.stringify({ status }),
+      });
 
-    fetchData();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast("Erro ao atualizar o status do pedido.", "error");
+        throw new Error(data?.message || "Erro ao atualizar o status do pedido.");
+      }
+
+      showToast("Status do pedido atualizado com sucesso!", "success");
+
+      await fetchData();
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || "Erro ao atualizar o status do pedido.", "error");
+      setError(err.message || "Erro ao atualizar o status do pedido.");
+    }
   };
 
+  // DELETE GERAL - CATEGORIA - MENU - PEDIDO
+  const handleCancelDelete = (id: string, type: "menu" | "categoria" | "pedido") => {
+    setConfirmModal({ isOpen: true, idToDelete: id, type });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmModal.idToDelete || !confirmModal.type) return;
+
+    try {
+      setLoading(true);
+      let url = "";
+      switch (confirmModal.type) {
+        case "menu":
+          url = `/api/menu/${confirmModal.idToDelete}`;
+          break;
+        case "categoria":
+          url = `/api/categoria/${confirmModal.idToDelete}`;
+          break;
+        case "pedido":
+          url = `/api/pedido/${confirmModal.idToDelete}`;
+          break;
+      }
+
+      const res = await fetch(url, { method: "DELETE", headers: { "Content-Type": "application/json" } });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "Erro ao deletar");
+      }
+
+      showToast("Item deletado com sucesso!", "success");
+      await fetchData();
+
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.message || "Erro ao deletar item.", "error");
+    } finally {
+      setLoading(false);
+      setConfirmModal({ isOpen: false });
+    }
+  };
+
+  // CORES DEPENDENDO DO STATUS
   const getStatusColor = (status: string) => {
     const colors: Record<string, { bg: string; text: string; icon: any }> = {
       "Pendente": { bg: "bg-yellow-100", text: "text-yellow-700", icon: Clock },
@@ -337,6 +503,7 @@ export default function AdminPanel() {
     return colors[status] || colors["Pendente"];
   };
 
+  // ITENS DA NAVEGAÇÃO
   const navItems = [
     { id: "pedidos", label: "Pedidos", icon: ShoppingBag },
     { id: "cardapio", label: "Cardápio", icon: Utensils },
@@ -344,38 +511,20 @@ export default function AdminPanel() {
     { id: "relatorios", label: "Relatórios", icon: BarChart3 },
   ];
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setEditingItem(prev => ({
-        ...prev,
-        imagem: reader.result as string, // preview
-        file,                            // arquivo real
-        removeImagem: false,             // cancela remoção
-      }));
-    };
-
-    reader.readAsDataURL(file);
-  };
-
-
-  const handleRemoveImage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setEditingItem(prev => ({
-      ...prev,
-      imagem: "",
-      imagemId: "",
-      removeImagem: true, // 👈 avisa o backend
-    }));
-  };
-
   return (
     <div className="h-screen bg-slate-50 flex flex-col md:flex-row overflow-hidden font-sans text-slate-900">
+      {/* Loading */}
+      <LoadingOverlay show={loading} message="Autenticando..." />
+
+      <ConfirmModal
+        message="Tem certeza que deseja excluir este item?"
+        isOpen={confirmModal.isOpen}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmModal({ isOpen: false })}
+      />
+
+      {/* Toast */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-72 bg-white text-slate-900 p-6 flex-col shadow-xl border-r border-orange-50">
@@ -385,7 +534,7 @@ export default function AdminPanel() {
           </div>
           <div>
             <span className="text-lg font-black tracking-tight block text-slate-900">PIZZARIA</span>
-            <span className="text-xs text-orange-600 font-bold uppercase tracking-widest">Admin Panel</span>
+            <span className="text-xs text-orange-600 font-bold block uppercase tracking-widest">Admin Painel</span>
           </div>
         </div>
 
@@ -395,7 +544,7 @@ export default function AdminPanel() {
               key={item.id}
               onClick={() => setActiveTab(item.id as any)}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition duration-300 relative group",
+                "w-full cursor-pointer flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition duration-300 relative group",
                 activeTab === item.id
                   ? "bg-orange-600 text-white shadow-lg shadow-orange-200"
                   : "text-slate-500 hover:text-orange-600 hover:bg-orange-50"
@@ -410,12 +559,12 @@ export default function AdminPanel() {
         <div className="space-y-3 border-t border-slate-100 pt-6">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 transition duration-300"
+            className="w-full flex cursor-pointer items-center gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 transition duration-300"
           >
             <LogOut size={20} />
             Sair do Painel
           </button>
-          <a href="/" className="px-4 py-2 text-sm text-slate-400 hover:text-orange-600 transition duration-300 font-bold flex items-center gap-2">
+          <a href="/" className="px-4  py-2 text-sm text-slate-400 hover:text-orange-600 transition duration-300 font-bold flex items-center gap-2">
             <Home size={16} /> Voltar para o Site
           </a>
         </div>
@@ -438,7 +587,7 @@ export default function AdminPanel() {
                     key={status}
                     onClick={() => setFiltroStatus(status)}
                     className={cn(
-                      "px-5 py-2.5 rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap",
+                      "px-5 py-2.5 cursor-pointer rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap",
                       filtroStatus === status
                         ? "bg-orange-600 text-white shadow-md scale-105"
                         : "text-slate-400 hover:text-orange-600 hover:bg-orange-50"
@@ -508,6 +657,7 @@ export default function AdminPanel() {
                         </span>
                       </div>
 
+                      {/* Link do WhatsApp (se houver telefone) */}
                       {pedido.cliente?.telefone && (
                         <a
                           href={`https://wa.me/55${pedido.cliente.telefone.replace(/\D/g, '')}`}
@@ -518,24 +668,53 @@ export default function AdminPanel() {
                         </a>
                       )}
 
-                      <div className="space-y-3">
-                        {pedido.itens.map((item, idx) => (
-                          <div key={idx} className={`bg-slate-50 p-5 ${pedido.cliente.nome ? "rounded-x-2xl rounded-b-2xl" : "rounded-2xl"} border border-slate-100`}>
-                            <p className="text-slate-900 font-black text-lg">
-                              {item.quantidade}x{" "}
-                              {item.isMeioAMeio
-                                ? `Meio ${item.sabor1Id?.nome || 'Sabor 1'} / Meio ${item.sabor2Id?.nome || 'Sabor 2'}`
-                                : item.produtoId?.nome || "Item"}
-                            </p>
+                      {/* Container dos Itens do Pedido */}
+                      <div className="space-y-0"> {/* Use space-y-0 para que as bordas se toquem perfeitamente */}
+                        {pedido.itens.map((item, idx) => {
+                          // --- LÓGICA DE ARREDONDAMENTO DAS BORDAS ---
+                          const totalItens = pedido.itens.length;
+                          const temTelefone = !!pedido.cliente?.telefone;
+                          const classesDeBorda = [];
 
-                            <div className="text-sm text-slate-500 mt-2 space-y-1 font-medium">
-                              {item.borda?.nome !== 'nenhuma' && <p className="flex items-center gap-1.5"><ChevronRight size={12} className="text-orange-600" /> {item.borda?.nome}</p>}
-                              {item.observacao && <p className="italic text-orange-600 bg-orange-50 p-2 rounded-lg mt-2">Obs: {item.observacao}</p>}
+                          if (totalItens === 1) {
+                            // Caso 1: Apenas um item no pedido
+                            classesDeBorda.push(temTelefone ? "rounded-b-2xl" : "rounded-2xl");
+                          } else {
+                            // Caso 2: Múltiplos itens no pedido
+                            if (idx === 0) {
+                              // Primeiro item: ou encaixa no telefone ou tem topo redondo
+                              classesDeBorda.push(temTelefone ? "" : "rounded-t-2xl");
+                            } else if (idx === totalItens - 1) {
+                              // Último item: sempre tem a base redonda
+                              classesDeBorda.push("rounded-b-2xl");
+                            }
+                            // Itens do meio não recebem classes de arredondamento
+                          }
+                          // --- FIM DA LÓGICA ---
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`bg-slate-50 p-5 border-x border-b border-slate-100 ${classesDeBorda.join(" ")}`}
+                            >
+                              <p className="text-slate-900 font-black text-lg">
+                                {item.quantidade}x{" "}
+                                {item.isMeioAMeio
+                                  ? `Meio ${item.sabor1Id?.nome || 'Sabor 1'} / Meio ${item.sabor2Id?.nome || 'Sabor 2'}`
+                                  : item.produtoId?.nome || "Item"}
+                              </p>
+
+                              <div className="text-sm text-slate-500 mt-2 space-y-1 font-medium">
+                                {item.borda?.nome !== 'nenhuma' && <p className="flex items-center gap-1.5"><ChevronRight size={12} className="text-orange-600" /> {item.borda?.nome}</p>}
+                                {item.observacao && <p className="italic text-orange-600 bg-orange-50 p-2 rounded-lg mt-2">Obs: {item.observacao}</p>}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
+
+                    {/* Coluna da Direita (Total e Botões) */}
                     <div className="flex flex-col items-end justify-between gap-4">
                       <div className="text-right">
                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Total do Pedido</p>
@@ -545,7 +724,7 @@ export default function AdminPanel() {
                         {pedido.status === "Pendente" && (
                           <button
                             onClick={() => updatePedidoStatus(pedido.id, "Preparando")}
-                            className="p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-100 transition shadow-sm"
+                            className="p-4 cursor-pointer bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-100 transition shadow-sm"
                           >
                             <Clock size={20} />
                           </button>
@@ -554,7 +733,7 @@ export default function AdminPanel() {
                         {pedido.status === "Preparando" && (
                           <button
                             onClick={() => updatePedidoStatus(pedido.id, "Saiu para entrega")}
-                            className="p-4 bg-purple-50 text-purple-600 rounded-2xl hover:bg-purple-100 transition shadow-sm"
+                            className="p-4 cursor-pointer bg-purple-50 text-purple-600 rounded-2xl hover:bg-purple-100 transition shadow-sm"
                           >
                             <TrendingUp size={20} />
                           </button>
@@ -563,7 +742,7 @@ export default function AdminPanel() {
                         {pedido.status === "Saiu para entrega" && (
                           <button
                             onClick={() => updatePedidoStatus(pedido.id, "Entregue")}
-                            className="p-4 bg-green-50 text-green-600 rounded-2xl hover:bg-green-100 transition shadow-sm"
+                            className="p-4 cursor-pointer bg-green-50 text-green-600 rounded-2xl hover:bg-green-100 transition shadow-sm"
                           >
                             <CheckCircle size={20} />
                           </button>
@@ -572,30 +751,29 @@ export default function AdminPanel() {
                         {pedido.status !== "Entregue" && (
                           <button
                             onClick={() => updatePedidoStatus(pedido.id, "Cancelado")}
-                            className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition shadow-sm"
+                            className="p-4 cursor-pointer bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition shadow-sm"
                             title="Cancelar pedido"
                           >
                             <XCircle size={20} />
                           </button>
                         )}
 
-                        {/* 🔥 EXCLUIR — SOMENTE SE CANCELADO OU PENDENTE */}
                         {["Cancelado", "Pendente"].includes(pedido.status) && (
                           <button
-                            onClick={() => handleDeletePedido(pedido.id)}
-                            className="p-4 bg-slate-100 text-slate-500 rounded-2xl hover:bg-red-50 hover:text-red-600 transition shadow-sm"
+                            onClick={() => handleCancelDelete(pedido.id, 'pedido')}
+                            className="p-4 cursor-pointer bg-slate-100 text-slate-500 rounded-2xl hover:bg-red-50 hover:text-red-600 transition shadow-sm"
                             title="Excluir pedido"
                           >
                             <Trash2 size={20} />
                           </button>
                         )}
                       </div>
-
                     </div>
                   </div>
                 </div>
               );
             })}
+
           </div>
         )}
 
@@ -603,14 +781,13 @@ export default function AdminPanel() {
               CARDÁPIO
           ============================ */}
         {activeTab === "cardapio" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+          <div className="space-y-8">
 
             {/* Grid de Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {menu.map((item) => (
-                <motion.div
+                <div
                   key={item.id}
-                  variants={itemVariants}
                   className="bg-white rounded-4xl border border-orange-50 shadow-sm overflow-hidden group hover:shadow-xl hover:shadow-orange-100/50 transition-all duration-500 flex flex-col"
                 >
                   {/* Imagem do Card */}
@@ -644,30 +821,30 @@ export default function AdminPanel() {
                             setEditingItem(item);
                             setIsModalOpen(true);
                           }}
-                          className="p-2 text-slate-300 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"
+                          className="p-2 text-slate-300 cursor-pointer hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"
                         >
                           <Edit size={18} />
                         </button>
                         <button
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
+                          onClick={() => handleCancelDelete(item.id, 'menu')}
+                          className="p-2 text-slate-300 cursor-pointer hover:text-red-600 hover:bg-red-50 rounded-xl transition"
                         >
                           <Trash2 size={18} />
                         </button>
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ===========================
               CATEGORIAS
           ============================ */}
         {activeTab === "categorias" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+          <div className="space-y-8">
             <div className="bg-white p-8 rounded-3xl border border-orange-50 shadow-sm">
               <h3 className="text-xl font-black text-slate-900 mb-6 tracking-tighter">
                 {editingCategoria ? "Editar Categoria" : "Nova Categoria"}
@@ -683,7 +860,7 @@ export default function AdminPanel() {
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-black hover:bg-orange-700 transition shadow-lg shadow-orange-200 uppercase text-xs tracking-widest flex-1 sm:flex-none"
+                    className="bg-orange-600 cursor-pointer text-white px-8 py-4 rounded-2xl font-black hover:bg-orange-700 transition shadow-lg shadow-orange-200 uppercase text-xs tracking-widest flex-1 sm:flex-none"
                   >
                     {editingCategoria ? "Salvar" : "Adicionar"}
                   </button>
@@ -691,7 +868,7 @@ export default function AdminPanel() {
                     <button
                       type="button"
                       onClick={() => { setEditingCategoria(null); setNovaCategoria(""); }}
-                      className="bg-slate-100 text-slate-500 px-8 py-4 rounded-2xl font-black hover:bg-slate-200 transition uppercase text-xs tracking-widest"
+                      className="bg-slate-100 cursor-pointer text-slate-500 px-8 py-4 rounded-2xl font-black hover:bg-slate-200 transition uppercase text-xs tracking-widest"
                     >
                       Cancelar
                     </button>
@@ -702,9 +879,8 @@ export default function AdminPanel() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {categorias.map((cat) => (
-                <motion.div
+                <div
                   key={cat.id}
-                  variants={itemVariants}
                   className="bg-white p-6 rounded-3xl border border-orange-50 shadow-sm flex justify-between items-center group hover:border-orange-200 transition"
                 >
                   <div className="flex items-center gap-3">
@@ -716,21 +892,21 @@ export default function AdminPanel() {
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleEditCategoria(cat)}
-                      className="p-2 text-slate-300 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"
+                      className="p-2 text-slate-300 cursor-pointer hover:text-orange-600 hover:bg-orange-50 rounded-xl transition"
                     >
                       <Edit size={18} />
                     </button>
                     <button
-                      onClick={() => handleDeleteCategoria(cat.id)}
-                      className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
+                      onClick={() => handleCancelDelete(cat.id, 'categoria')}
+                      className="p-2 text-slate-300 cursor-pointer hover:text-red-600 hover:bg-red-50 rounded-xl transition"
                     >
                       <Trash2 size={18} />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ===========================
@@ -794,111 +970,99 @@ export default function AdminPanel() {
         ))}
         <button onClick={handleLogout} className="flex flex-col items-center gap-1.5 text-red-400">
           <LogOut size={22} />
-          <span className="text-[9px] font-black uppercase tracking-widest">Sair</span>
+          <span className="text-[9px] cursor-pointer font-black uppercase tracking-widest">Sair</span>
         </button>
       </nav>
 
       {/* Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/40 z-60 flex items-center justify-center p-4 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white p-8 rounded-[2.5rem] w-full max-w-lg relative border border-orange-50 shadow-2xl">
-              <button onClick={() => { setIsModalOpen(false); setEditingItem(null); }} className="absolute top-6 right-6 text-slate-300 hover:text-red-500 p-2 bg-slate-50 rounded-full transition"><X size={20} /></button>
-              <h2 className="text-3xl font-black mb-8 text-slate-900 tracking-tighter">{editingItem?.id ? "Editar Item" : "Novo Item"}</h2>
-              <form onSubmit={handleSaveItem} className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/40 z-60 flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            {/* ✅ 1. Removido max-h-[90vh] e flex-col para deixar o modal ter sua altura natural */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white p-6 rounded-[2.5rem] w-full max-w-4xl relative border border-orange-50 shadow-2xl"
+            >
+              <button onClick={() => { setIsModalOpen(false); setEditingItem(null); }} className="absolute cursor-pointer top-5 right-5 text-slate-300 hover:text-red-500 p-2 bg-slate-50 rounded-full transition z-10"><X size={20} /></button>
 
-                <div>
-                  <label className="block mb-2 font-black text-slate-400 text-xs uppercase tracking-widest">Nome do Produto</label>
-                  <input type="text" value={editingItem?.nome || ""} onChange={e => setEditingItem(prev => ({ ...prev, nome: e.target.value }))} className="w-full p-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition" placeholder="Ex: Pizza de Calabresa" required />
-                </div>
-                {/* Seção de Upload de Imagem */}
-                <div className="flex flex-col items-center justify-center mb-6">
-                  <label className="block mb-2 font-black text-slate-400 text-xs uppercase tracking-widest w-full">
-                    Imagem do Produto
-                  </label>
-                  <div className="relative group w-full h-15 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 hover:border-orange-600 transition-all overflow-hidden flex items-center justify-center">
+              {/* ✅ 2. Reduzido o espaçamento inferior (mb) do título */}
+              <h2 className="text-2xl font-black mb-6 text-slate-900 tracking-tighter">
+                {editingItem?.id ? "Editar Item" : "Novo Item"}
+              </h2>
 
-                    {editingItem?.imagem ? (
-                      <>
-                        <img
-                          src={editingItem.imagem}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                        />
+              <form onSubmit={handleSaveItem}>
+                {/* ✅ 3. Layout em grid para as colunas, com gap reduzido */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6">
 
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 z-10">
-                          <div
-                            onClick={() => fileInputRef.current?.click()}
-                            className="flex flex-col items-center text-white cursor-pointer"
-                          >
-                            <Upload size={32} />
-                            <span className="text-[10px] font-black uppercase mt-1">Trocar</span>
-                          </div>
+                  {/* --- COLUNA 1: NOME E IMAGEM --- */}
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <label className="block mb-1.5 font-black text-slate-400 text-xs uppercase tracking-widest">Nome do Produto</label>
+                      <input type="text" value={editingItem?.nome || ""} onChange={e => setEditingItem(prev => ({ ...prev, nome: e.target.value }))} className="w-full p-3 border border-slate-100 rounded-xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition" placeholder="Ex: Pizza de Calabresa" required />
+                    </div>
+                    <div className="flex flex-col items-center justify-center flex-1">
+                      <label className="block mb-1.5 font-black text-slate-400 text-xs uppercase tracking-widest w-full">Imagem do Produto</label>
+                      {/* ✅ 4. Altura do container da imagem drasticamente reduzida */}
+                      <div className="relative group w-full h-48 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-orange-600 transition-all overflow-hidden flex items-center justify-center">
+                        {editingItem?.imagem ? (
+                          <>
+                            <img src={editingItem.imagem} alt="Preview" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 z-10">
+                              <div onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center text-white cursor-pointer"><Upload size={24} /><span className="text-[10px] font-black uppercase mt-1">Trocar</span></div>
+                              <button type="button" onClick={handleRemoveImage} className="flex flex-col items-center text-red-400 hover:text-red-500 transition-colors"><Trash2 size={24} /><span className="text-[10px] font-black uppercase mt-1">Remover</span></button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex flex-col items-center text-slate-400 group-hover:text-orange-600 transition-colors"><ImageIcon size={20} className="mb-1" /><span className="text-[11px] font-bold uppercase tracking-widest">Clique para enviar</span></div>
+                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-                          <button
-                            type="button"
-                            onClick={handleRemoveImage}
-                            className="flex flex-col items-center text-red-400 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={32} />
-                            <span className="text-[10px] font-black uppercase mt-1">Remover</span>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex flex-col items-center text-slate-400 group-hover:text-orange-600 transition-colors">
-                          <ImageIcon size={15} className="mb-2" />
-                          <span className="text-xs font-bold uppercase tracking-widest">
-                            Clique para enviar
-                          </span>
-                        </div>
-
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                        />
-                      </>
-                    )}
+                  {/* --- COLUNA 2: RESTO DOS CAMPOS --- */}
+                  <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block mb-1.5 font-black text-slate-400 text-xs uppercase tracking-widest">Preço (R$)</label>
+                        <input type="number" step="0.01" value={editingItem?.preco || ""} onChange={e => setEditingItem(prev => ({ ...prev, preco: Number(e.target.value) }))} className="w-full p-3 border border-slate-100 rounded-xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition" placeholder="0.00" required />
+                      </div>
+                      <div>
+                        <label className="block mb-1.5  font-black text-slate-400 text-xs uppercase tracking-widest">Categoria</label>
+                        <select value={editingItem?.categoria || categorias[0]?.nome || ""} onChange={e => setEditingItem(prev => ({ ...prev, categoria: e.target.value }))} className="w-full p-3 cursor-pointer border border-slate-100 rounded-xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition">
+                          <option value="" disabled>Selecione</option>
+                          {categorias.map(cat => (<option key={cat.id} value={cat.nome}>{cat.nome}</option>))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex flex-col">
+                      <label className="block mb-1.5 font-black text-slate-400 text-xs uppercase tracking-widest">Descrição</label>
+                      {/* ✅ 5. 'rows' do textarea reduzido para ocupar menos espaço */}
+                      <textarea value={editingItem?.descricao || ""} onChange={e => setEditingItem(prev => ({ ...prev, descricao: e.target.value }))} className="w-full p-3 border border-slate-100 rounded-xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition resize-none flex-1" rows={5} placeholder="Descreva os ingredientes..." />
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block mb-2 font-black text-slate-400 text-xs uppercase tracking-widest">Preço (R$)</label>
-                    <input type="number" step="0.01" value={editingItem?.preco || ""} onChange={e => setEditingItem(prev => ({ ...prev, preco: Number(e.target.value) }))} className="w-full p-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition" placeholder="0.00" required />
-                  </div>
-                  <div>
-                    <label className="block mb-2 font-black text-slate-400 text-xs uppercase tracking-widest">Categoria</label>
-                    <select
-                      value={editingItem?.categoria || categorias[0]?.nome || ""}
-                      onChange={e => setEditingItem(prev => ({ ...prev, categoria: e.target.value }))}
-                      className="w-full p-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition"
-                    >
-                      <option value="" disabled>
-                        Selecione uma categoria
-                      </option>
-                      {categorias.map(cat => (
-                        <option key={cat.id} value={cat.nome}>{cat.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block mb-2 font-black text-slate-400 text-xs uppercase tracking-widest">Descrição</label>
-                  <textarea value={editingItem?.descricao || ""} onChange={e => setEditingItem(prev => ({ ...prev, descricao: e.target.value }))} className="w-full p-4 border border-slate-100 rounded-2xl bg-slate-50 text-slate-900 font-bold focus:border-orange-600 outline-none transition resize-none" rows={3} placeholder="Descreva os ingredientes..." />
-                </div>
-                <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-slate-50">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 rounded-full bg-slate-100 font-black text-slate-500 hover:bg-slate-200 transition text-sm uppercase tracking-widest">Cancelar</button>
-                  <button type="submit" className="px-8 py-4 rounded-full bg-orange-600 text-white font-black hover:bg-orange-700 transition shadow-lg shadow-orange-200 text-sm uppercase tracking-widest">Salvar Item</button>
+
+                {/* ✅ 6. Rodapé com espaçamento superior reduzido */}
+                <div className="flex justify-end gap-4 mt-6 pt-6 border-t border-slate-100">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="cursor-pointer px-6 py-3 rounded-full bg-slate-100 font-black text-slate-500 hover:bg-slate-200 transition text-xs uppercase tracking-widest">Cancelar</button>
+                  <button type="submit" className="cursor-pointer px-6 py-3 rounded-full bg-orange-600 text-white font-black hover:bg-orange-700 transition shadow-lg shadow-orange-200 text-xs uppercase tracking-widest">Salvar Item</button>
                 </div>
               </form>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }
