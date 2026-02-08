@@ -1010,7 +1010,7 @@ export default function AdminPanel() {
                     <div className="flex flex-col items-center justify-center flex-1">
                       <label className="block mb-1.5 font-black text-slate-400 text-xs uppercase tracking-widest w-full">Imagem do Produto</label>
                       {/* ✅ 4. Altura do container da imagem drasticamente reduzida */}
-                      <div className="relative group w-full h-48 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-orange-600 transition-all overflow-hidden flex items-center justify-center">
+                      <div className="relative group w-full h-15 lg:h-48 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 hover:border-orange-600 transition-all overflow-hidden flex items-center justify-center">
                         {editingItem?.imagem ? (
                           <>
                             <img src={editingItem.imagem} alt="Preview" className="w-full h-full object-cover" />
