@@ -999,7 +999,7 @@ export default function AdminPanel() {
 
               <form onSubmit={handleSaveItem}>
                 {/* ✅ 3. Layout em grid para as colunas, com gap reduzido */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-4 gap-x-6">
 
                   {/* --- COLUNA 1: NOME E IMAGEM --- */}
                   <div className="flex flex-col gap-4">
