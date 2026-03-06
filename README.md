@@ -140,4 +140,4 @@ Criar uma solução moderna para **digitalizar pedidos de pizzarias**, facilitan
 Desenvolvido por **Miguel Aleixo**
 
 GitHub:  
-https://github.com/SEU-USUARIO
+https://github.com/Miguel-Aleixo
