@@ -7,8 +7,6 @@ O sistema também possui uma **dashboard administrativa** para gerenciamento de 
 
 Além disso, o projeto pode ser integrado com **bots de atendimento automatizado**, como WhatsApp, para automatizar pedidos e comunicação com clientes.
 
----
-
 # 🚀 Funcionalidades
 
 ## 👤 Área do Cliente
