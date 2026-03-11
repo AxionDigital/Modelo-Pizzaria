@@ -116,7 +116,11 @@ Essa automação melhora a experiência do cliente e agiliza o atendimento da pi
 
 ## Backend
 - TypeScript  
-- Express.js  
+- Express.js 
+
+## Banco de Dados
+- MongoDB  
+- Mongoose 
 
 ## Integrações
 - Telegram Bot API  
