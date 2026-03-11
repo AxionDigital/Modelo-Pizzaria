@@ -41,7 +41,7 @@ Sistema simples de identificação utilizando:
 Área completa para gestão da pizzaria.
 
 Link de acesso direto:  
-https://modelo-pizzaria/dashboard
+https://modelo-pizzaria.vercel.app/admin/dashboard
 
 Credenciais de acesso:
 
